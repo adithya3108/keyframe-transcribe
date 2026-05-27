@@ -10,6 +10,8 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from api.auth import DOCS_BASE, require_api_key
 from api.db import get_db
@@ -17,9 +19,42 @@ from api.models import ErrorDetail, ErrorResponse, JobStatusResponse, JobSubmitU
 from api.pricing import check_and_reserve_quota
 from api.worker import run_pipeline
 
+# Tier-based rate limits: free=5/min, pro=60/min
+RATE_LIMITS = {"free": "5/minute", "pro": "60/minute"}
+
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
 
 MAX_FILE_BYTES = 100 * 1024 * 1024  # 100 MB
+
+# In-memory per-key request tracking for rate limiting
+import time
+import collections
+_request_times: dict[str, collections.deque] = {}
+
+def _check_rate_limit(api_key_id: str, tier: str) -> None:
+    """Sliding window rate limiter: free=5/min, pro=60/min."""
+    limit = 5 if tier == "free" else 60
+    now = time.monotonic()
+    window = 60.0
+    if api_key_id not in _request_times:
+        _request_times[api_key_id] = collections.deque()
+    dq = _request_times[api_key_id]
+    # Remove old entries outside the window
+    while dq and now - dq[0] > window:
+        dq.popleft()
+    if len(dq) >= limit:
+        raise HTTPException(
+            status_code=429,
+            detail={"error": {
+                "code": "RATE_LIMIT_EXCEEDED",
+                "message": f"Rate limit exceeded. {tier.title()} tier allows {limit} requests/minute.",
+                "retryable": True,
+                "retry_after_seconds": int(window - (now - dq[0])),
+                "suggested_action": f"Wait {int(window - (now - dq[0]))} seconds before retrying.",
+                "docs_url": f"{DOCS_BASE}/docs#rate-limits",
+            }},
+        )
+    dq.append(now)
 ALLOWED_MIMES = {
     "video/mp4", "video/quicktime", "video/x-msvideo", "video/webm",
     "audio/mpeg", "audio/mp4", "audio/wav", "audio/ogg", "audio/webm",
@@ -82,6 +117,7 @@ async def submit_url_job(
     request: Request,
     key: dict = Depends(require_api_key),
 ):
+    _check_rate_limit(key["id"], key["tier"])
     await check_and_reserve_quota(key["id"], key["tier"])
     return await _create_job(request, key, source_url=body.url, model=body.model)
 
@@ -110,6 +146,7 @@ async def submit_file_job(
     model: Optional[str] = Form(None, description="Optional: force a specific Gemini model."),
     key: dict = Depends(require_api_key),
 ):
+    _check_rate_limit(key["id"], key["tier"])
     await check_and_reserve_quota(key["id"], key["tier"])
 
     content_type = file.content_type or ""
