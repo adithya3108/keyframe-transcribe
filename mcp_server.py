@@ -30,7 +30,7 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
-API_BASE = os.getenv("KEYFRAME_API_BASE", "https://keyframe-transcribe.up.railway.app")
+API_BASE = os.getenv("KEYFRAME_API_BASE", "https://keyframe-transcribe.onrender.com")
 API_KEY = os.getenv("KEYFRAME_API_KEY", "")
 
 server = Server("keyframe-transcription")

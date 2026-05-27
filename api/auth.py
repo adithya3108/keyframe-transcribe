@@ -11,7 +11,7 @@ from api.db import get_db
 
 _header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
-DOCS_BASE = "https://keyframe-transcribe.up.railway.app"
+DOCS_BASE = "https://keyframe-transcribe.onrender.com"
 
 
 def _hash_key(key: str) -> str:
