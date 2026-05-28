@@ -143,7 +143,7 @@ async def submit_url_job(
 async def submit_file_job(
     request: Request,
     file: UploadFile = File(..., description="Video or audio file to transcribe."),
-    model: Optional[str] = Form(None, description="Optional: force a specific Gemini model."),
+    model: Optional[str] = Form(None, description="Optional: force a specific Gemini model. Leave blank to use default.", include_in_schema=False),
     key: dict = Depends(require_api_key),
 ):
     _check_rate_limit(key["id"], key["tier"])
