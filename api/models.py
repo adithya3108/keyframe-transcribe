@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 class JobSubmitURL(BaseModel):
     url: str = Field(..., description="Public URL of the video/audio file to transcribe (max 100MB).")
-    model: Optional[str] = Field(None, description="Force a specific Gemini model. Omit to use the default (gemini-2.5-flash with Pro fallback).")
+    model: Optional[str] = Field(None, description="Force a specific Gemini model. Omit to use the default (gemini-2.5-flash with Pro fallback).", json_schema_extra={"example": None})
 
 
 class JobStatusResponse(BaseModel):
