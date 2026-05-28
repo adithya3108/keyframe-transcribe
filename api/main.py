@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+import os
+# Ensure ffmpeg is on PATH on Windows
+_ffmpeg_path = r"C:\Users\adith\ffmpeg\ffmpeg-8.1.1-essentials_build\bin"
+if os.path.exists(_ffmpeg_path) and _ffmpeg_path not in os.environ.get("PATH", ""):
+    os.environ["PATH"] = _ffmpeg_path + os.pathsep + os.environ.get("PATH", "")
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
